@@ -1,6 +1,6 @@
 [Unit]
 Description=mount disks automatically
-After=local-fs.target copypi-copy.service
+After=local-fs.target mosquitto.service
 
 [Service]
 Type=simple

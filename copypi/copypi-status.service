@@ -1,6 +1,6 @@
 [Unit]
 Description=handels status updates for display information
-After=copypi-copy.service
+After=mosquitto.service
 
 [Service]
 Type=simple

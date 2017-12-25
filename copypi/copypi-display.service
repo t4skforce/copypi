@@ -1,6 +1,6 @@
 [Unit]
 Description=displays statusinformation on e-ink screen
-After=copypi-status.service
+After=mosquitto.service
 
 [Service]
 Type=simple

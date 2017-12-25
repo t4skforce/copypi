@@ -40,8 +40,6 @@ def find_bus_id(device_name):
 		print(ex)
 	return None
 
-
-
 if args.type == 'mount':
 	if not disk_exists(args.device):
 		print("%s does not exist!"%args.device)
@@ -57,4 +55,4 @@ msg = {
   'hub_port':find_bus_id(args.device) if disk_exists(args.device) else -1
 }
 
-publish.single('udisks-glue', payload=json.dumps(msg), qos=1, hostname=args.host, port=args.port)
+publish.single('udisks-glue', payload=json.dumps(msg), qos=1, retain=True, hostname=args.host, port=args.port)

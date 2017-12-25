@@ -37,8 +37,8 @@ class PortStatusThread(threading.Thread):
 		self.files = files
 
 	def set_error(self, msg):
-		self.error = True
-		self.error_msg = msg
+		self.error = msg.get('error')
+		self.error_msg = msg.get('error_msg')
 
 	def copy(self, status=False):
 		if status:
@@ -76,7 +76,7 @@ class PortStatusThread(threading.Thread):
 		})
 		if self.last_msg != msg:
 			#print("sending","usb/ports/%d"%self.hub_port,"->",msg)
-			infot = mqttc.publish("usb/ports/%d"%self.hub_port,payload=msg,qos=1,retain=True)
+			infot = mqttc.publish("usb/ports/%d"%self.hub_port, payload=msg, qos=1, retain=True)
 			if not infot is None:
 				infot.wait_for_publish()
 			#print("ok","usb/ports/%d"%self.hub_port,"->",msg)
@@ -114,7 +114,7 @@ def msg_worker(msg_q):
 			mount = mounts.pop(hash, None)
 			thread = threads.pop(hash, None)
 			if not thread is None:
-				thread.join(2.0)
+				thread.join()
 
 msg_q = queue.Queue()
 threading.Thread(target=msg_worker, args=(msg_q,)).start()
@@ -136,16 +136,17 @@ def set_error(mosq, obj, msg):
 	hash = msg.topic.split('/')[-1]
 	thread = threads.get(hash,None)
 	if not thread is None:
-		thread.set_error(msg.payload.decode('utf-8'))
+		thread.set_error(json.loads(msg.payload.decode('utf-8')))
 
 def on_message(mqttc, obj, msg):
 	payload = json.loads(msg.payload.decode('utf-8'))
 	msg_q.put(payload)
 
-mqttc = client.Client(client_id="status_subscriber", clean_session=True)
-mqttc.message_callback_add("copy/status/files/#", set_files)
+mqttc = client.Client(client_id="status_subscriber", clean_session=False)
 mqttc.message_callback_add("copy/status/copying/#", is_copying)
+mqttc.message_callback_add("copy/status/files/#", set_files)
+mqttc.message_callback_add("copy/status/error/#", set_error)
 mqttc.on_message = on_message
 mqttc.connect(args.host, args.port, 60)
-mqttc.subscribe([("udisks-glue", 1),("copy/status/files/#",1),("copy/status/copying/#",1)])
+mqttc.subscribe([("udisks-glue", 1),("copy/status/files/#",1),("copy/status/error/#",1),("copy/status/copying/#",1)])
 mqttc.loop_forever()

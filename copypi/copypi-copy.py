@@ -10,6 +10,7 @@ import paho.mqtt.client as client
 import argparse
 import threading, queue
 import hashlib
+import errno
 
 parser = argparse.ArgumentParser(description='Main Process for copy handling')
 parser.add_argument('--host',type=str,default='127.0.0.1',required=False,help='MQTT Server hostname or IP')
@@ -47,22 +48,26 @@ class CopyThread(threading.Thread):
 		while not self.stoprequest.isSet():
 			try:
 				id,src,dst = self.copy.pop(0)
-				try:
-					mkdir_p(os.path.dirname(dst))
-					if not os.path.exists(dst) or os.stat(src).st_size != os.stat(dst).st_size:
-						print(self.id,"copying","->","true")
+				if os.path.exists(src):
+					try:
 						self.send_copy_msg(True)
-						shutil.copy2(src,dst)
-						print(self.id,":",src,"->",dst)
-					print(src,dst,len(self.copy))
-				except OSError as e:
-					print(e)
-					time.sleep(1)
-				finally:
-					print(self.id,"copying","->","false")
-					self.send_copy_msg(False)
-					print(self.id,"files")
-					self.send_files_msg()
+						mkdir_p(os.path.dirname(dst))
+						if not os.path.exists(dst) or os.stat(src).st_size != os.stat(dst).st_size:
+							#print(self.id,"copying","->","true")
+							shutil.copy2(src,dst)
+							#print(self.id,":",src,"->",dst)
+						#print(src,dst,len(self.copy))
+					except OSError as err:
+						print(err)
+						if err.errno in [errno.EFBIG,errno.ENOSPC,errno.ENFILE,errno.EROFS,errno.ENODEV,errno.EBUSY]:
+							self.send_error_msg(err)
+						time.sleep(1)
+					finally:
+						#print(self.id,"copying","->","false")
+						if len(self.copy) <= 0:
+							self.send_copy_msg(False)
+						#print(self.id,"files")
+						self.send_files_msg()
 			except IndexError as e:
 				time.sleep(0.5)
 
@@ -72,9 +77,16 @@ class CopyThread(threading.Thread):
 	def send_copy_msg(self,status):
 		self.send_msg("copy/status/copying/%s"%self.hash,'true' if status else 'false')
 
-	def send_msg(self,topic,payload):
+	def send_error_msg(self,err):
+		if not err is None:
+			self.send_msg("copy/status/error/%s"%self.hash,json.dumps({
+				'error':True,
+				'error_msg':str(err)
+			}), retain=False)
+
+	def send_msg(self,topic,payload,retain=True):
 		if self.last_msg.get(topic,None) != payload:
-			infot = mqttc.publish(topic,payload=payload,qos=1)
+			infot = mqttc.publish(topic, payload=payload, qos=1, retain=retain)
 			if not infot is None:
 				infot.wait_for_publish()
 		self.last_msg[topic]=payload
@@ -159,8 +171,8 @@ def on_message(mqttc, obj, msg):
 	payload = json.loads(msg.payload.decode('utf-8'))
 	msg_q.put(payload)
 
-mqttc = client.Client(client_id="copy_subscriber",clean_session=True)
+mqttc = client.Client(client_id="copy_subscriber", clean_session=False)
 mqttc.on_message = on_message
 mqttc.connect(args.host, args.port, 60)
-mqttc.subscribe("udisks-glue", 0)
+mqttc.subscribe("udisks-glue", 1)
 mqttc.loop_forever()

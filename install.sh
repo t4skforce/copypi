@@ -48,6 +48,7 @@ echo '>> Installing mosquitto'
 grep -q "bind_address" /etc/mosquitto/mosquitto.conf && sed -i 's/\(bind_address*\).*/\1 127.0.0.1/' /etc/mosquitto/mosquitto.conf || echo "bind_address 127.0.0.1" >> /etc/mosquitto/mosquitto.conf
 grep -q "max_inflight_messages" /etc/mosquitto/mosquitto.conf && sed -i 's/\(max_inflight_messages*\).*/\1 0/' /etc/mosquitto/mosquitto.conf || echo "max_inflight_messages 0" >> /etc/mosquitto/mosquitto.conf
 grep -q "max_queued_messages" /etc/mosquitto/mosquitto.conf && sed -i 's/\(max_queued_messages*\).*/\1 0/' /etc/mosquitto/mosquitto.conf || echo "max_queued_messages 0" >> /etc/mosquitto/mosquitto.conf
+grep -q "persistence" /etc/mosquitto/mosquitto.conf && sed -i 's/\(persistence*\).*/\1 false/' /etc/mosquitto/mosquitto.conf || echo "persistence false" >> /etc/mosquitto/mosquitto.conf
 systemctl enable mosquitto && systemctl restart mosquitto || { echo "service install mosquitto failed"; journalctl -xe; exit 1; }
 
 # install python dependencies
