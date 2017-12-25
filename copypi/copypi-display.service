@@ -1,0 +1,13 @@
+[Unit]
+Description=displays statusinformation on e-ink screen
+After=copypi-status.service
+
+[Service]
+Type=simple
+ExecStart=/usr/bin/python3 -u /usr/sbin/copypi-display
+KillMode=process
+Restart=always
+RestartSec=3
+
+[Install]
+WantedBy=multi-user.target

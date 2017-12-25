@@ -1,0 +1,13 @@
+[Unit]
+Description=handels status updates for display information
+After=copypi-copy.service
+
+[Service]
+Type=simple
+ExecStart=/usr/bin/python3 -u /usr/sbin/copypi-status
+KillMode=process
+Restart=always
+RestartSec=3
+
+[Install]
+WantedBy=multi-user.target
